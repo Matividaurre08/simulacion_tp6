@@ -29,8 +29,17 @@ def generar_intervalo_arribos():
     valor = stats.beta.rvs(parametro_alpha, parametro_beta)
     return valor_minimo + valor * (valor_maximo - valor_minimo)
 
+def generar_tiempo_atencion():
+    k = -0.22959
+    zigma = 33.969
+    mu = 286.98
+    
+    valor = stats.genextreme.rvs(k, loc=mu, scale=zigma)
+    return valor
 
 def procesar_llegada():
+    global TPLL, T, NS, NT
+
     T = TPLL
     IA = generar_intervalo_arribos()
     TPLL = T + IA
@@ -45,6 +54,8 @@ def main():
     esIntermitente = 0
 
     establecer_condiciones_iniciales()
+    valor = generar_tiempo_atencion()
+    print(valor)
 
     # Genero 58 eventos de llegada
     for i in range(58):
