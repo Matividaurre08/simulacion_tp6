@@ -75,7 +75,7 @@ def procesar_llegada():
         TA = generar_tiempo_atencion()
         TPS[POSICION] = T + TA
         STA = STA + TA
-    elif(NS == 21 + K and TPSI == HV):
+    elif(NS >= (21 + K) and TPSI == HV):
         # Hay un puesto intermitente disponible
         TA = generar_tiempo_atencion()
         TPSI = T + TA
@@ -125,19 +125,26 @@ def imprimir_resultados():
     print("Porcentaje de uso del puesto intermitente: " + str(PPSI))
     print("Cantidad de partidos atendidos: " + str(NT))
 
+
+def procesar_evento():
+    MENOR_TPS, POSICION = calcular_menor_tps()
+    if(TPLL <= MENOR_TPS and TPLL <= TPSI):
+        procesar_llegada()
+    else:
+        procesar_salida(POSICION)
+
 # Programa principal
 def main():
     global T, TF, TPLL, TPSI
 
     establecer_condiciones_iniciales()
-    print (generar_tiempo_atencion())
+    
     while(T <= TF):
-        MENOR_TPS, POSICION = calcular_menor_tps()
-        if(TPLL <= MENOR_TPS and TPLL <= TPSI):
-            procesar_llegada()
-        else:
-            procesar_salida(POSICION)
-
+        procesar_evento()
+    
+    #TPLL = HV
+    #while(NS > 0):
+    #    procesar_evento()
     calcular_resultados()
     imprimir_resultados()
     
