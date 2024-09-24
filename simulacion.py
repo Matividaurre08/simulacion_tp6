@@ -16,7 +16,7 @@ STA = 0
 PEC = 0
 PPS = 0
 PPSI = 0
-TF = 720
+TF = 1000
 
 def establecer_condiciones_iniciales():
     global K, HV, TPS
@@ -47,9 +47,11 @@ def generar_tiempo_atencion():
     k = -0.22959
     zigma = 33.969
     mu = 286.98
-    
-    valor = stats.genextreme.rvs(k, loc=mu, scale=zigma)
-    return valor
+
+    while True:
+        valor = stats.genextreme.rvs(k, loc=mu, scale=zigma)
+        if 240 <= valor <= 400:
+            return valor
 
 def elegir_puesto_comun():
     global HV, TPS
@@ -61,7 +63,7 @@ def elegir_puesto_comun():
 def procesar_llegada():
     global T, TPLL, NT, NS, TPSI, SPS, STA, NI, HV
 
-    SPS = SPS + (TPLL - T) * NS
+    SPS = SPS + ((TPLL - T) * NS)
     T = TPLL
     IA = generar_intervalo_arribos()
     TPLL = T + IA
@@ -83,9 +85,9 @@ def procesar_llegada():
 def procesar_salida(POSICION):
     global T, TPSI, NS, SPS, STA, NI, HV
 
-    if(TPSI == TPS[POSICION]):
+    if(TPS[POSICION] <= TPSI):
         # Es una salida de un puesto fijo
-        SPS += (TPS[POSICION] - T) * NS
+        SPS += ((TPS[POSICION] - T) * NS)
         T = TPS[POSICION]
         NS -= 1
         if((NS>=21 and TPSI == HV) or (NS == 21 and TPS[POSICION] != HV)):
@@ -96,7 +98,7 @@ def procesar_salida(POSICION):
             TPS[POSICION] = HV
     else:
         # Es una salida de un puesto intermitente
-        SPS += (TPSI - T) * NS
+        SPS += ((TPSI - T) * NS)
         T = TPSI
         NS -= 1
         if(NS >= 21 + K):
@@ -108,12 +110,12 @@ def procesar_salida(POSICION):
             TPSI = HV
 
 def calcular_resultados():
-    global STA, SPS, PEC, PPS, PPSI, NT, NI, T
+    global STA, SPS, PEC, PPS, PPSI, NT, NI
 
     PEC = (SPS - STA) / NT
-    PPS = SPS / T
+    PPS = SPS / NT
     print(str(SPS))
-    print(str(T))
+    print(str(STA))
     print(str(NI))
     PPSI = (NI * 100) / NT
 
@@ -128,8 +130,8 @@ def main():
     global T, TF, TPLL, TPSI
 
     establecer_condiciones_iniciales()
-
-    while(T < TF):
+    print (generar_tiempo_atencion())
+    while(T <= TF):
         MENOR_TPS, POSICION = calcular_menor_tps()
         if(TPLL <= MENOR_TPS and TPLL <= TPSI):
             procesar_llegada()
