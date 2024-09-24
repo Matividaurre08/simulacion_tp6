@@ -3,22 +3,36 @@ import numpy as np
 
 # Condiciones iniciales
 NS = 0
-N = 0
+K = 0
 NT = 0
 TPLL = 0
-TPS = 0
-TPSI = 0
+TPS = []
+HV = 9999999
+TPSI = HV
 T = 0
+SPS = 0
+NI = 0
+STA = 0
+PEC = 0
+PPS = 0
+PPSI = 0
+TF = 720
 
 def establecer_condiciones_iniciales():
-    print("Ingrese cantidad de puestos intermitentes:")
-    N = int(input())
-    TPS = [0 for _ in range(21)]
-    TPSI = [0 for _ in range(N)]
+    global K, HV, TPS
+    print("Ingrese cantidad de partidos en cola para agregar un puesto intermitente:")
+    K = int(input())
+    TPS = [HV for _ in range(21)]
 
-def calcular_menor_tps(numeroPuesto, esIntermitente):
-    #TODO
-    return 0
+def calcular_menor_tps():
+    global HV, TPS
+    menor = TPS[0]
+    posicion = 0
+    for i in range(21):
+        if(TPS[i] < menor):
+            menor = TPS[i]
+            posicion = i
+    return menor, posicion
 
 def generar_intervalo_arribos():
     parametro_alpha = 0.68432
@@ -37,38 +51,93 @@ def generar_tiempo_atencion():
     valor = stats.genextreme.rvs(k, loc=mu, scale=zigma)
     return valor
 
-def procesar_llegada():
-    global TPLL, T, NS, NT
+def elegir_puesto_comun():
+    global HV, TPS
+    for i in range(21):
+        if(TPS[i] == HV):
+            return i
+    return -1
 
+def procesar_llegada():
+    global T, TPLL, NT, NS, TPSI, SPS, STA, NI, HV
+
+    SPS = SPS + (TPLL - T) * NS
     T = TPLL
     IA = generar_intervalo_arribos()
     TPLL = T + IA
-    NS = NS + 1
     NT = NT + 1
-    
-    return 0
+    NS = NS + 1
+    if((NS <= 21 and TPSI == HV) or (NS <= 20 and TPSI != HV)):
+        # Hay un puesto fijo disponible
+        POSICION = elegir_puesto_comun()
+        TA = generar_tiempo_atencion()
+        TPS[POSICION] = T + TA
+        STA = STA + TA
+    elif(NS == 21 + K and TPSI == HV):
+        # Hay un puesto intermitente disponible
+        TA = generar_tiempo_atencion()
+        TPSI = T + TA
+        NI = NI + 1
+        STA = STA + TA
+        
+def procesar_salida(POSICION):
+    global T, TPSI, NS, SPS, STA, NI, HV
+
+    if(TPSI == TPS[POSICION]):
+        # Es una salida de un puesto fijo
+        SPS += (TPS[POSICION] - T) * NS
+        T = TPS[POSICION]
+        NS -= 1
+        if((NS>=21 and TPSI == HV) or (NS == 21 and TPS[POSICION] != HV)):
+            TA = generar_tiempo_atencion()
+            TPS[POSICION] = T + TA
+            STA = STA + TA
+        else:
+            TPS[POSICION] = HV
+    else:
+        # Es una salida de un puesto intermitente
+        SPS += (TPSI - T) * NS
+        T = TPSI
+        NS -= 1
+        if(NS >= 21 + K):
+            TA = generar_tiempo_atencion()
+            TPSI = T + TA
+            STA = STA + TA
+            NI = NI + 1
+        else:
+            TPSI = HV
+
+def calcular_resultados():
+    global STA, SPS, PEC, PPS, PPSI, NT, NI, T
+
+    PEC = (SPS - STA) / NT
+    PPS = SPS / T
+    print(str(SPS))
+    print(str(T))
+    print(str(NI))
+    PPSI = (NI * 100) / NT
+
+def imprimir_resultados():
+    print("Promedio de espera en cola: " + str(PEC))
+    print("Promedio de permanencia en el sistema: " + str(PPS))
+    print("Porcentaje de uso del puesto intermitente: " + str(PPSI))
+    print("Cantidad de partidos atendidos: " + str(NT))
 
 # Programa principal
 def main():
-    numeroPuesto = 0
-    esIntermitente = 0
+    global T, TF, TPLL, TPSI
 
     establecer_condiciones_iniciales()
-    valor = generar_tiempo_atencion()
-    print(valor)
 
-    # Genero 58 eventos de llegada
-    for i in range(58):
-        MENOR_TPS = calcular_menor_tps(numeroPuesto, esIntermitente)
-        
-        if(TPLL <= MENOR_TPS):
+    while(T < TF):
+        MENOR_TPS, POSICION = calcular_menor_tps()
+        if(TPLL <= MENOR_TPS and TPLL <= TPSI):
             procesar_llegada()
-        elif (esIntermitente == 0):
-            # es una salida de un puesto fijo
-            return 0
         else:
-            # es una salida de un puesto intermitente
-            return 0
+            procesar_salida(POSICION)
+
+    calcular_resultados()
+    imprimir_resultados()
     
 
 if __name__ == "__main__":
